@@ -50,7 +50,7 @@ DB(f::AbstractString) = DB(utf8(f))
 DB() = DB(":memory:")
 
 function _close(db::DB)
-    sqlite3_close_v2(db.handle)
+    db.handle == C_NULL || @CHECK db sqlite3_close_v2(db.handle)
     db.handle = C_NULL
     return
 end
@@ -66,15 +66,18 @@ type Stmt
 
     function Stmt(db::DB,sql::AbstractString)
         handle = Ref{Ptr{Void}}()
-        sqliteprepare(db,sql,handle,Ref{Ptr{Void}}())
-        stmt = new(db,handle[])
-        finalizer(stmt, _close)
-        return stmt
+        if @OK sqliteprepare(db,sql,handle,Ref{Ptr{Void}}())
+            stmt = new(db,handle[])
+            finalizer(stmt, _close)
+            return stmt
+        else
+            sqliteerror()
+        end
     end
 end
 
 function _close(stmt::Stmt)
-    sqlite3_finalize(stmt.handle)
+    stmt.handle == C_NULL || @CHECK stmt sqlite3_finalize(stmt.handle)
     stmt.handle = C_NULL
     return
 end
