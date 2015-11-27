@@ -132,8 +132,17 @@ function query(db::DB,sql::AbstractString, values=[];rows::Int=0,stricttypes::Bo
     so = Source(db,sql,values;rows=rows,stricttypes=stricttypes)
     return Data.stream!(so,Data.Table)
 end
+
+const tablesquery = """SELECT name FROM sqlite_master
+    WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'
+    UNION ALL
+    SELECT name FROM sqlite_temp_master
+    WHERE type IN ('table','view')
+    ORDER BY 1;
+"""
+
 "returns a list of tables in `db`"
-tables(db::DB) = query(db,"SELECT name FROM sqlite_master WHERE type='table';")
+tables(db::DB) = query(db,tablesquery)
 "returns a list of indices in `db`"
 indices(db::DB) = query(db,"SELECT name FROM sqlite_master WHERE type='index';")
 "returns a list of columns in `table`"
